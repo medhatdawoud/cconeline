@@ -410,17 +410,23 @@ CONF="$CLAUDE_DIR/statusline.conf"
 ask() {
     local label="$1" flag="$2" example="$3"
     if [ "$YES_ALL" = "1" ]; then
-        echo "  Include $label? (e.g. $example) [Y/n]: Y"
+        echo "  Include $label? (e.g. $example) [Y/n]: y"
         echo "${flag}=1" >> "$CONF"
         return
     fi
-    read -r -p "  Include $label? (e.g. $example) [Y/n]: " ans
-    [[ "${ans:-y}" =~ ^[Yy] ]] && echo "${flag}=1" >> "$CONF" || echo "${flag}=0" >> "$CONF"
+    read -r -s -p "  Include $label? (e.g. $example) [Y/n]: " ans
+    if [[ "${ans:-y}" =~ ^[Yy] ]]; then
+        echo "y"
+        echo "${flag}=1" >> "$CONF"
+    else
+        echo "n"
+        echo "${flag}=0" >> "$CONF"
+    fi
 }
 
 ask_rtk() {
     if [ "$YES_ALL" = "1" ]; then
-        echo "  Include RTK savings? (e.g. ✂️ 1.5M (5.5%)) [Y/n]: Y"
+        echo "  Include RTK savings? (e.g. ✂️ 1.5M (5.5%)) [Y/n]: y"
         if ! command -v rtk &>/dev/null; then
             echo ""
             echo "  WARNING: rtk is not installed."
@@ -432,8 +438,9 @@ ask_rtk() {
         echo "STATUSLINE_RTK=1" >> "$CONF"
         return
     fi
-    read -r -p "  Include RTK savings? (e.g. ✂️ 1.5M (5.5%)) [Y/n]: " ans
+    read -r -s -p "  Include RTK savings? (e.g. ✂️ 1.5M (5.5%)) [Y/n]: " ans
     if [[ "${ans:-y}" =~ ^[Yy] ]]; then
+        echo "y"
         if ! command -v rtk &>/dev/null; then
             echo ""
             echo "  WARNING: rtk is not installed."
@@ -441,12 +448,19 @@ ask_rtk() {
             echo "  Activate: rtk init -g --auto-patch"
             echo "  Verify:   rtk gain"
             echo ""
-            read -r -p "  Keep RTK enabled (assuming you will install it)? [Y/n]: " confirm
-            [[ "${confirm:-y}" =~ ^[Yy] ]] && echo "STATUSLINE_RTK=1" >> "$CONF" || echo "STATUSLINE_RTK=0" >> "$CONF"
+            read -r -s -p "  Keep RTK enabled (assuming you will install it)? [Y/n]: " confirm
+            if [[ "${confirm:-y}" =~ ^[Yy] ]]; then
+                echo "y"
+                echo "STATUSLINE_RTK=1" >> "$CONF"
+            else
+                echo "n"
+                echo "STATUSLINE_RTK=0" >> "$CONF"
+            fi
         else
             echo "STATUSLINE_RTK=1" >> "$CONF"
         fi
     else
+        echo "n"
         echo "STATUSLINE_RTK=0" >> "$CONF"
     fi
 }
