@@ -19,6 +19,21 @@ Each section is individually toggleable via `~/.claude/statusline.conf`.
 
 ## Setup
 
+**Via npm (recommended):**
+
+```bash
+npm install -g ccstatusline
+ccstatusline
+```
+
+**Via npx (no install):**
+
+```bash
+npx ccstatusline
+```
+
+**Via git:**
+
 ```bash
 git clone git@github.com:medhatdawoud/ccstatusline.git ~/.claude/ccstatusline
 cd ~/.claude/ccstatusline
@@ -52,4 +67,4 @@ STATUSLINE_TODAY=1
 STATUSLINE_MONTH=1
 ```
 
-Re-run `./setup-statusline.sh` to reconfigure interactively.
+Re-run `ccstatusline` (or `./setup-statusline.sh`) to reconfigure interactively.

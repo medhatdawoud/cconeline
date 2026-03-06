@@ -1,0 +1,22 @@
+{
+  "name": "ccstatusline",
+  "version": "1.0.0",
+  "description": "Custom status line for Claude Code CLI",
+  "bin": {
+    "ccstatusline": "bin/ccstatusline.js"
+  },
+  "files": [
+    "bin/",
+    "statusline.sh",
+    "setup-statusline.sh"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline"
+  ],
+  "license": "MIT"
+}
