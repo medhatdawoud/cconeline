@@ -258,7 +258,7 @@ if [ "${STATUSLINE_SESSION_TIME:-0}" = "1" ]; then
         ELAPSED=$(( $(date +%s) - FIRST_EPOCH ))
         HOURS=$((ELAPSED / 3600)); MINS=$(( (ELAPSED % 3600) / 60 ))
         [ $HOURS -gt 0 ] && SESSION_TIME="${HOURS}h ${MINS}m" || SESSION_TIME="${MINS}m"
-        METRICS="${METRICS}$(printf ' \033[90m|\033[0m ⏱️  \033[37m%s\033[0m' "$SESSION_TIME")"
+        METRICS="${METRICS}$(printf ' \033[90m|\033[0m ⏱️ \033[37m%s\033[0m' "$SESSION_TIME")"
     fi
 fi
 

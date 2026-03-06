@@ -18,5 +18,9 @@
     "claude-code",
     "statusline"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/medhatdawoud/cconeline.git"
+  }
 }
