@@ -1,9 +1,9 @@
 {
-  "name": "ccstatusline",
+  "name": "ccline",
   "version": "1.0.0",
   "description": "Custom status line for Claude Code CLI",
   "bin": {
-    "ccstatusline": "bin/ccstatusline.js"
+    "ccline": "bin/ccstatusline.js"
   },
   "files": [
     "bin/",
