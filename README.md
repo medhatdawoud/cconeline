@@ -4,6 +4,8 @@ Custom status line for [Claude Code](https://claude.ai/code) CLI.
 
 <img width="1678" height="45" alt="Screenshot 2026-03-06 at 11 41 44 AM" src="https://github.com/user-attachments/assets/eecb40db-aaa5-487f-9cd8-c705f6609676" />
 
+![preview](preview.gif)
+
 ## What it shows
 
 - Current directory
