@@ -1,0 +1,21 @@
+{
+  "name": "cconeline",
+  "version": "1.0.5",
+  "description": "Custom status line for Claude Code CLI",
+  "bin": {
+    "cconeline": "bin/cconeline"
+  },
+  "files": [
+    "bin/"
+  ],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/medhatdawoud/cconeline.git"
+  }
+}
