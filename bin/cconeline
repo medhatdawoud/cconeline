@@ -128,8 +128,65 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
     # Calculate session cost from JSONL (includes all token types: input, cache_write, cache_read, output)
     SESSION_ID=$(echo "$input" | jq -r '.session_id // "unknown"')
     SESSION_JSONL=$(find "$CLAUDE_DIR/projects" -name "${SESSION_ID}.jsonl" 2>/dev/null | head -1)
+
+    # Accumulate cost across /clear operations using a workspace-specific baseline file.
+    # When /clear is run, Claude Code issues a new session_id; we detect the change and
+    # add the previous session's cost to a running baseline so the display never resets.
+    WORKSPACE_HASH=$(printf '%s' "$DIR" | cksum | awk '{print $1}')
+    WORKSPACE_COST_CACHE="$CLAUDE_DIR/workspace-cost-${WORKSPACE_HASH}.json"
+    COST_BASELINE=0
+
+    if [ -f "$WORKSPACE_COST_CACHE" ]; then
+        STORED_SESSION=$(jq -r '.session_id // ""' "$WORKSPACE_COST_CACHE" 2>/dev/null)
+        STORED_BASELINE=$(jq -r '.baseline // 0' "$WORKSPACE_COST_CACHE" 2>/dev/null)
+        if [ "$STORED_SESSION" != "$SESSION_ID" ] && [ -n "$STORED_SESSION" ] && [ "$STORED_SESSION" != "unknown" ]; then
+            # Session ID changed — /clear was run. Read the old session's cost and fold it
+            # into the baseline so the total is preserved across clears.
+            PREV_JSONL=$(find "$CLAUDE_DIR/projects" -name "${STORED_SESSION}.jsonl" 2>/dev/null | head -1)
+            if [ -n "$PREV_JSONL" ]; then
+                PREV_COST=$(jq -r '
+                    select(.type == "assistant" and .message.id != null) |
+                    [.timestamp, .message.id, (.message.model // ""),
+                     (.message.usage.input_tokens // 0),
+                     (.message.usage.cache_creation_input_tokens // 0),
+                     (.message.usage.cache_read_input_tokens // 0),
+                     (.message.usage.output_tokens // 0)] | @tsv
+                ' "$PREV_JSONL" 2>/dev/null | \
+                sort -t"	" -k1,1 | awk -F"	" '
+                    function cost(model, inp, cc, cr, out) {
+                        if (model ~ /opus-4-[56]/)
+                            return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
+                        else if (model ~ /opus-4/)
+                            return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75
+                        else if (model ~ /haiku/)
+                            return (inp/1e6)*1 + (cc/1e6)*1.25 + (cr/1e6)*0.1 + (out/1e6)*5
+                        else
+                            return (inp/1e6)*3 + (cc/1e6)*3.75 + (cr/1e6)*0.3 + (out/1e6)*15
+                    }
+                    !seen[$2]++ { total += cost($3, $4, $5, $6, $7) }
+                    END { printf "%.3f", total+0 }
+                ')
+                COST_BASELINE=$(echo "${STORED_BASELINE:-0} ${PREV_COST:-0}" | awk '{printf "%.3f", $1 + $2}')
+            else
+                COST_BASELINE="${STORED_BASELINE:-0}"
+            fi
+            printf '{"session_id":"%s","baseline":%s}\n' "$SESSION_ID" "$COST_BASELINE" > "$WORKSPACE_COST_CACHE"
+        else
+            COST_BASELINE="${STORED_BASELINE:-0}"
+            if [ "$STORED_SESSION" != "$SESSION_ID" ]; then
+                # First time seeing this session in this workspace
+                printf '{"session_id":"%s","baseline":0}\n' "$SESSION_ID" > "$WORKSPACE_COST_CACHE"
+                COST_BASELINE=0
+            fi
+        fi
+    else
+        # First time seeing this workspace — initialise the baseline file
+        printf '{"session_id":"%s","baseline":0}\n' "$SESSION_ID" > "$WORKSPACE_COST_CACHE"
+        COST_BASELINE=0
+    fi
+
     if [ -n "$SESSION_JSONL" ]; then
-        TOTAL_COST=$(jq -r '
+        CURRENT_COST=$(jq -r '
             select(.type == "assistant" and .message.id != null) |
             [.timestamp,
              .message.id,
@@ -153,11 +210,12 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
             !seen[$2]++ { total += cost($3, $4, $5, $6, $7) }
             END { printf "%.3f", total+0 }
         ')
+        TOTAL_COST=$(echo "${COST_BASELINE:-0} ${CURRENT_COST:-0}" | awk '{printf "%.3f", $1 + $2}')
     else
         # Fallback: basic cost without cache tokens
         INPUT_COST=$(echo "$TOTAL_INPUT $INPUT_COST_PER_M" | awk '{printf "%.4f", ($1 / 1000000) * $2}')
         OUTPUT_COST=$(echo "$TOTAL_OUTPUT $OUTPUT_COST_PER_M" | awk '{printf "%.4f", ($1 / 1000000) * $2}')
-        TOTAL_COST=$(echo "$INPUT_COST $OUTPUT_COST" | awk '{printf "%.3f", $1 + $2}')
+        TOTAL_COST=$(echo "${COST_BASELINE:-0} $INPUT_COST $OUTPUT_COST" | awk '{printf "%.3f", $1 + $2 + $3}')
     fi
 
     # Format token count
