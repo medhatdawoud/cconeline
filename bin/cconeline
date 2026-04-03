@@ -99,9 +99,23 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
         CONTEXT_INFO=$(printf '%b%s\033[90m%s\033[0m' "$BAR_COLOR" "$BAR_FILLED" "$BAR_EMPTY")
     fi
 
+    # Shared awk cost function (matches ccusage default/online mode)
+    COST_AWK='
+        function cost(model, inp, cc, cr, out) {
+            if (model ~ /opus-4-[56]/)
+                return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
+            else if (model ~ /opus-4/)
+                return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75
+            else if (model ~ /haiku/)
+                return (inp/1e6)*1 + (cc/1e6)*1.25 + (cr/1e6)*0.1 + (out/1e6)*5
+            else
+                return (inp/1e6)*3 + (cc/1e6)*3.75 + (cr/1e6)*0.3 + (out/1e6)*15
+        }
+    '
+
     if [ "${STATUSLINE_SESSION:-0}" = "1" ]; then
     # Calculate session cost based on model pricing
-    # Pricing per million tokens
+    # Pricing per million tokens (used only in fallback path)
     case "$MODEL_ID" in
         *"opus-4-5"*|*"opus-4-6"*)
             INPUT_COST_PER_M=5.00
@@ -125,11 +139,20 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
             ;;
     esac
 
-    # Calculate session cost from JSONL (includes all token types: input, cache_write, cache_read, output)
+    # Calculate session cost from JSONL (includes main session + subagent files)
     SESSION_ID=$(echo "$input" | jq -r '.session_id // "unknown"')
     SESSION_JSONL=$(find "$CLAUDE_DIR/projects" -name "${SESSION_ID}.jsonl" 2>/dev/null | head -1)
-    if [ -n "$SESSION_JSONL" ]; then
-        TOTAL_COST=$(jq -r '
+    SESSION_DIR=$(find "$CLAUDE_DIR/projects" -type d -name "$SESSION_ID" 2>/dev/null | head -1)
+    # Collect all JSONL files for this session (main + subagents)
+    SESSION_FILES=""
+    [ -n "$SESSION_JSONL" ] && SESSION_FILES="$SESSION_JSONL"
+    if [ -n "$SESSION_DIR" ]; then
+        SUBAGENT_FILES=$(find "$SESSION_DIR" -name "*.jsonl" 2>/dev/null)
+        [ -n "$SUBAGENT_FILES" ] && SESSION_FILES=$(printf '%s\n%s' "$SESSION_FILES" "$SUBAGENT_FILES")
+    fi
+    SESSION_FILES=$(echo "$SESSION_FILES" | sed '/^$/d')
+    if [ -n "$SESSION_FILES" ]; then
+        TOTAL_COST=$(echo "$SESSION_FILES" | xargs jq -r '
             select(.type == "assistant" and .message.id != null) |
             [.timestamp,
              .message.id,
@@ -138,18 +161,8 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
              (.message.usage.cache_creation_input_tokens // 0),
              (.message.usage.cache_read_input_tokens // 0),
              (.message.usage.output_tokens // 0)] | @tsv
-        ' "$SESSION_JSONL" 2>/dev/null | \
-        sort -t"	" -k1,1 | awk -F"	" '
-            function cost(model, inp, cc, cr, out) {
-                if (model ~ /opus-4-[56]/)
-                    return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
-                else if (model ~ /opus-4/)
-                    return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75
-                else if (model ~ /haiku/)
-                    return (inp/1e6)*1 + (cc/1e6)*1.25 + (cr/1e6)*0.1 + (out/1e6)*5
-                else
-                    return (inp/1e6)*3 + (cc/1e6)*3.75 + (cr/1e6)*0.3 + (out/1e6)*15
-            }
+        ' 2>/dev/null | \
+        sort -t"	" -k1,1 | awk -F"	" "$COST_AWK"'
             !seen[$2]++ { total += cost($3, $4, $5, $6, $7) }
             END { printf "%.3f", total+0 }
         ')
@@ -176,7 +189,7 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
     # Calculate today's total cost by scanning JSONL files (same source as ccusage)
     TODAY_DATE=$(date +%Y-%m-%d)
     TODAY_CACHE="$CLAUDE_DIR/usage-today-cache.json"
-    CACHE_AGE=60  # seconds TTL
+    CACHE_AGE=15  # seconds TTL
 
     # Compute UTC start/end of local "today" for correct timezone-aware filtering
     # JSONL timestamps are UTC; local today may span two UTC dates
@@ -219,17 +232,7 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
                  (.message.usage.cache_read_input_tokens // 0),
                  (.message.usage.output_tokens // 0)] | @tsv
             ' 2>/dev/null | \
-            sort -t"	" -k1,1 | awk -F"	" '
-                function cost(model, inp, cc, cr, out) {
-                    if (model ~ /opus-4-[56]/)
-                        return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
-                    else if (model ~ /opus-4/)
-                        return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75
-                    else if (model ~ /haiku/)
-                        return (inp/1e6)*1 + (cc/1e6)*1.25 + (cr/1e6)*0.1 + (out/1e6)*5
-                    else
-                        return (inp/1e6)*3 + (cc/1e6)*3.75 + (cr/1e6)*0.3 + (out/1e6)*15
-                }
+            sort -t"	" -k1,1 | awk -F"	" "$COST_AWK"'
                 !seen[$2]++ { total += cost($3, $4, $5, $6, $7); tokens += $4+$5+$6+$7 }
                 END { printf "%.3f\t%d", total+0, tokens+0 }
             ')
@@ -361,17 +364,7 @@ else
              (.message.usage.cache_read_input_tokens // 0),
              (.message.usage.output_tokens // 0)] | @tsv
         ' 2>/dev/null | \
-        sort -t"	" -k1,1 | awk -F"	" '
-            function cost(model, inp, cc, cr, out) {
-                if (model ~ /opus-4-[56]/)
-                    return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
-                else if (model ~ /opus-4/)
-                    return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75
-                else if (model ~ /haiku/)
-                    return (inp/1e6)*1 + (cc/1e6)*1.25 + (cr/1e6)*0.1 + (out/1e6)*5
-                else
-                    return (inp/1e6)*3 + (cc/1e6)*3.75 + (cr/1e6)*0.3 + (out/1e6)*15
-            }
+        sort -t"	" -k1,1 | awk -F"	" "$COST_AWK"'
             !seen[$2]++ { total += cost($3, $4, $5, $6, $7) }
             END { printf "%.3f", total+0 }
         ')
