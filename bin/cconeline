@@ -102,7 +102,7 @@ if [ "$CONTEXT_WINDOW" != "null" ]; then
     # Shared awk cost function (matches ccusage default/online mode)
     COST_AWK='
         function cost(model, inp, cc, cr, out) {
-            if (model ~ /opus-4-[56]/)
+            if (model ~ /opus-4-[5-9]/)
                 return (inp/1e6)*5 + (cc/1e6)*6.25 + (cr/1e6)*0.5 + (out/1e6)*25
             else if (model ~ /opus-4/)
                 return (inp/1e6)*15 + (cc/1e6)*18.75 + (cr/1e6)*1.5 + (out/1e6)*75

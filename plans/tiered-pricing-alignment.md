@@ -33,9 +33,22 @@ Reduced from 60s to 15s to minimize lag vs ccusage's fresh calculation.
 
 `bin/cconeline`
 
+## Fix 2: opus-4-7 regex miss (2026-04-29)
+
+`claude-opus-4-7` launched in April 2026. The awk regex `opus-4-[56]` only matched
+models ending in 5 or 6, so `opus-4-7` fell through to the `opus-4` branch and was
+priced at $15/$75 instead of the correct $5/$25 — a 3× overestimate.
+
+LiteLLM confirms opus-4-5, opus-4-6, opus-4-7 are all $5/M input / $25/M output.
+Only opus-4-1 and opus-4-20250514 use the $15/$75 tier.
+
+**Fix:** Changed `opus-4-[56]` → `opus-4-[5-9]` to cover current and near-future
+models in the $5/$25 pricing tier.
+
 ## Verification
 
 - Flat rate calculation matches ccusage online default ($39.51 vs $39.512)
 - Session cost now includes subagent costs ($9.255 -> $9.598 for current session)
 - Session without main JSONL: was $0.000, now $0.310 from subagent data
 - bash -n syntax check passes
+- opus-4-7 now correctly priced at $5/$25 (was $15/$75)
