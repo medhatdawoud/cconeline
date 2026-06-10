@@ -1,6 +1,8 @@
-# cconeline
+# cconeline — Claude Code Status Line
 
-Custom status line for [Claude Code](https://claude.ai/code) CLI.
+**cconeline** is a terminal status line for [Claude Code](https://claude.ai/code), Anthropic's AI coding CLI. It displays real-time metrics directly in your terminal: git branch and diff stats, session token usage, API cost tracking, context window progress, memory usage, and more.
+
+If you use Claude Code regularly and want to monitor token costs, track context window usage, or see git status without leaving your terminal, cconeline gives you all of that in a single configurable status line.
 
 <img width="1678" height="45" alt="Screenshot 2026-03-06 at 11 41 44 AM" src="https://github.com/user-attachments/assets/eecb40db-aaa5-487f-9cd8-c705f6609676" />
 

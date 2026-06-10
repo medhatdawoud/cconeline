@@ -1,7 +1,7 @@
 {
   "name": "cconeline",
-  "version": "1.0.8",
-  "description": "Custom status line for Claude Code CLI",
+  "version": "1.0.9",
+  "description": "Terminal status line for Claude Code showing git info, token usage, cost tracking, and context window metrics",
   "bin": {
     "cconeline": "bin/cconeline"
   },
@@ -11,7 +11,18 @@
   "keywords": [
     "claude",
     "claude-code",
-    "statusline"
+    "anthropic",
+    "statusline",
+    "status-line",
+    "terminal",
+    "cli",
+    "token-cost",
+    "token-usage",
+    "ai-cost",
+    "llm",
+    "developer-tools",
+    "bash",
+    "shell"
   ],
   "license": "MIT",
   "repository": {
