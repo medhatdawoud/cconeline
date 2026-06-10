@@ -54,6 +54,17 @@ The setup script will:
 - Update `~/.claude/settings.json` with the statusLine command
 - Interactively configure which sections to show
 
+## Updating
+
+To get the latest version of the status line script without changing your configuration:
+
+```bash
+npm install -g cconeline   # upgrade the package
+cconeline -u               # update statusline.sh in place, keep your config
+```
+
+The `-u` flag rewrites `~/.claude/statusline.sh` and patches `settings.json` but leaves `~/.claude/statusline.conf` untouched.
+
 ## Prerequisites
 
 - **jq** - `brew install jq`
