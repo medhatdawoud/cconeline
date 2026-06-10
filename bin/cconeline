@@ -4,7 +4,9 @@ set -e
 
 CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 YES_ALL=0
+UPDATE_ONLY=0
 [ "$1" = "-y" ] && YES_ALL=1
+[ "$1" = "-u" ] && UPDATE_ONLY=1
 
 if ! command -v jq &>/dev/null; then
     echo "ERROR: jq is required but not installed. Install it first (e.g. brew install jq)."
@@ -398,6 +400,12 @@ jq --arg dir "$CLAUDE_DIR" \
     '.statusLine = {"type": "command", "command": ("bash " + $dir + "/statusline.sh")}' \
     "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
 echo "Updated settings.json: statusLine points to $CLAUDE_DIR/statusline.sh"
+
+if [ "$UPDATE_ONLY" = "1" ]; then
+    echo ""
+    echo "cconeline updated. Restart Claude Code to apply."
+    exit 0
+fi
 
 echo ""
 echo "Include: (Enter = yes, default all on)"

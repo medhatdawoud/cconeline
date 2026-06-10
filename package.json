@@ -1,6 +1,6 @@
 {
   "name": "cconeline",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Terminal status line for Claude Code showing git info, token usage, cost tracking, and context window metrics",
   "bin": {
     "cconeline": "bin/cconeline"
