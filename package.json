@@ -1,6 +1,6 @@
 {
   "name": "cconeline",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Custom status line for Claude Code CLI",
   "bin": {
     "cconeline": "bin/cconeline"
